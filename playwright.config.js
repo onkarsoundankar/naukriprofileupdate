@@ -15,11 +15,9 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    // Local Mac = headed
-    // GitHub Actions = headless
-   headless: true,
+    // Xvfb on GitHub Actions provides the virtual display
+    headless: false,
 
-    // Local Mac browser window
     viewport: null,
 
     launchOptions: {

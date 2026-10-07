@@ -28,8 +28,33 @@ test('Update Naukri Profile', async ({ page }) => {
   // Open Naukri
   await page.goto('https://www.naukri.com/');
 
+  await page.goto('https://www.naukri.com/', {
+  waitUntil: 'domcontentloaded',
+  timeout: 60000
+});
+
+console.log('URL:', page.url());
+console.log('Title:', await page.title());
+
+console.log(
+  'Access Denied:',
+  await page.getByRole('heading', { name: 'Access Denied' }).count()
+);
+
+console.log(
+  'Jobseeker Login:',
+  await page.getByTitle('Jobseeker Login').count()
+);
+
+await page.screenshot({
+  path: 'naukri-homepage.png',
+  fullPage: true
+});
+
   // Login
-  await page.getByTitle('Jobseeker Login').click();
+  //await page.getByTitle('Jobseeker Login').click();
+
+  await page.locator("#login_Layer").click();
 
   await page
     .getByLabel('Email ID / Username')
