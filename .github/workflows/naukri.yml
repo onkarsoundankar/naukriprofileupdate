@@ -29,8 +29,23 @@ jobs:
 
       - name: Test Naukri connectivity
         run: |
-          echo "Testing Naukri connectivity..."
-          curl -I -L --http1.1 --max-time 30 https://www.naukri.com/ || true
+          echo "========== Naukri connectivity test =========="
+
+          curl -v --http1.1 --max-time 30 \
+            https://www.naukri.com/ \
+            -o /tmp/naukri.html
+
+          echo ""
+          echo "========== Response size =========="
+
+          wc -c /tmp/naukri.html
+
+          echo ""
+          echo "========== First 500 characters =========="
+
+          head -c 500 /tmp/naukri.html
+
+          echo ""
 
       - name: Run Naukri automation
         run: |
