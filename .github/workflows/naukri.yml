@@ -13,31 +13,25 @@ jobs:
 
     steps:
 
-      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v6
 
-      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
 
-      # 3. Install dependencies
       - name: Install dependencies
         run: npm ci
 
-      # 4. Install Playwright
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
 
-      # 5. Test Naukri network connectivity
       - name: Test Naukri connectivity
         run: |
-          echo "Testing Naukri..."
+          echo "Testing Naukri connectivity..."
           curl -I -L --http1.1 --max-time 30 https://www.naukri.com/ || true
 
-      # 6. Run Playwright with headed Chromium + Xvfb
       - name: Run Naukri automation
         run: |
           xvfb-run --auto-servernum \
@@ -47,7 +41,6 @@ jobs:
           NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
 
-      # 7. Upload debugging files
       - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4
