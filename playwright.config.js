@@ -15,14 +15,18 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    headless: false,
+    // Local Mac = headed
+    // GitHub Actions = headless
+    headless: !!process.env.CI,
 
-    // Use actual browser window size
+    // Local Mac browser window
     viewport: null,
 
-    // Start Chrome maximized
     launchOptions: {
-      args: ['--start-maximized'],
+      args: [
+        '--start-maximized',
+        '--window-size=1920,1080',
+      ],
     },
 
     trace: 'on-first-retry',
