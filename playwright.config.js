@@ -17,7 +17,7 @@ export default defineConfig({
   use: {
     // Local Mac = headed
     // GitHub Actions = headless
-    headless: !!process.env.CI,
+   headless: true,
 
     // Local Mac browser window
     viewport: null,
