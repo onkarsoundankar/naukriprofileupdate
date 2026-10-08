@@ -13,49 +13,110 @@ jobs:
 
     steps:
 
+      # ==========================================
+      # Checkout Repository
+      # ==========================================
       - name: Checkout repository
         uses: actions/checkout@v6
 
+      # ==========================================
+      # Setup Node.js
+      # ==========================================
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
 
+      # ==========================================
+      # Install Node Dependencies
+      # ==========================================
       - name: Install dependencies
         run: npm ci
 
+      # ==========================================
+      # Install Playwright + Chromium
+      # ==========================================
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
 
-      - name: Test Naukri connectivity
+      # ==========================================
+      # Test Naukri Connectivity
+      # ==========================================
+      - name: Test Naukri HTTP protocols
         run: |
-          echo "========== Naukri connectivity test =========="
 
-          curl -v --http1.1 --max-time 30 \
+          echo "=========================================="
+          echo "        NAUKRI DNS TEST"
+          echo "=========================================="
+
+          getent hosts www.naukri.com || true
+
+          echo ""
+          echo "=========================================="
+          echo "        HTTP/1.1 TEST"
+          echo "=========================================="
+
+          curl -v \
+            --http1.1 \
+            --max-time 15 \
             https://www.naukri.com/ \
-            -o /tmp/naukri.html
+            -o /tmp/naukri-http1.html || true
 
           echo ""
-          echo "========== Response size =========="
+          echo "========== HTTP/1.1 Response Size =========="
 
-          wc -c /tmp/naukri.html
-
-          echo ""
-          echo "========== First 500 characters =========="
-
-          head -c 500 /tmp/naukri.html
+          wc -c /tmp/naukri-http1.html 2>/dev/null || true
 
           echo ""
+          echo "========== HTTP/1.1 First 500 Characters =========="
 
+          head -c 500 /tmp/naukri-http1.html 2>/dev/null || true
+
+          echo ""
+          echo ""
+          echo "=========================================="
+          echo "        HTTP/2 TEST"
+          echo "=========================================="
+
+          curl -v \
+            --http2 \
+            --max-time 15 \
+            https://www.naukri.com/ \
+            -o /tmp/naukri-http2.html || true
+
+          echo ""
+          echo "========== HTTP/2 Response Size =========="
+
+          wc -c /tmp/naukri-http2.html 2>/dev/null || true
+
+          echo ""
+          echo "========== HTTP/2 First 500 Characters =========="
+
+          head -c 500 /tmp/naukri-http2.html 2>/dev/null || true
+
+          echo ""
+          echo ""
+          echo "=========================================="
+          echo "        Naukri Connectivity Test Complete"
+          echo "=========================================="
+
+      # ==========================================
+      # Run Playwright Automation
+      # ==========================================
       - name: Run Naukri automation
         run: |
-          xvfb-run --auto-servernum \
+          xvfb-run \
+            --auto-servernum \
             --server-args="-screen 0 1920x1080x24" \
             npx playwright test tests/naukri.spec.js
+
         env:
           NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
 
+      # ==========================================
+      # Upload Playwright Debug Artifacts
+      # ==========================================
       - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4
