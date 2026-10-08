@@ -56,6 +56,8 @@ jobs:
           echo "        HTTP/1.1 TEST"
           echo "=========================================="
 
+          rm -f /tmp/naukri-http1.html
+
           curl -v \
             --http1.1 \
             --max-time 15 \
@@ -65,18 +67,28 @@ jobs:
           echo ""
           echo "========== HTTP/1.1 Response Size =========="
 
-          wc -c /tmp/naukri-http1.html 2>/dev/null || true
+          if [ -f /tmp/naukri-http1.html ]; then
+            wc -c /tmp/naukri-http1.html
+          else
+            echo "No HTTP/1.1 response file created"
+          fi
 
           echo ""
           echo "========== HTTP/1.1 First 500 Characters =========="
 
-          head -c 500 /tmp/naukri-http1.html 2>/dev/null || true
+          if [ -f /tmp/naukri-http1.html ]; then
+            head -c 500 /tmp/naukri-http1.html
+          else
+            echo "No response received"
+          fi
 
           echo ""
           echo ""
           echo "=========================================="
           echo "        HTTP/2 TEST"
           echo "=========================================="
+
+          rm -f /tmp/naukri-http2.html
 
           curl -v \
             --http2 \
@@ -87,12 +99,20 @@ jobs:
           echo ""
           echo "========== HTTP/2 Response Size =========="
 
-          wc -c /tmp/naukri-http2.html 2>/dev/null || true
+          if [ -f /tmp/naukri-http2.html ]; then
+            wc -c /tmp/naukri-http2.html
+          else
+            echo "No HTTP/2 response file created"
+          fi
 
           echo ""
           echo "========== HTTP/2 First 500 Characters =========="
 
-          head -c 500 /tmp/naukri-http2.html 2>/dev/null || true
+          if [ -f /tmp/naukri-http2.html ]; then
+            head -c 500 /tmp/naukri-http2.html
+          else
+            echo "No response received"
+          fi
 
           echo ""
           echo ""
