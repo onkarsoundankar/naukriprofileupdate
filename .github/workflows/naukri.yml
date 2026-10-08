@@ -54,7 +54,7 @@ jobs:
           echo ""
           echo "=========================================="
           echo "        HTTP/1.1 TEST"
-          echo "        Chrome User-Agent
+          echo "        Chrome User-Agent"
           echo "=========================================="
 
           rm -f /tmp/naukri-http1.html
