@@ -54,6 +54,7 @@ jobs:
           echo ""
           echo "=========================================="
           echo "        HTTP/1.1 TEST"
+          echo "        Chrome User-Agent
           echo "=========================================="
 
           rm -f /tmp/naukri-http1.html
@@ -61,6 +62,7 @@ jobs:
           curl -v \
             --http1.1 \
             --max-time 15 \
+            -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36" \
             https://www.naukri.com/ \
             -o /tmp/naukri-http1.html || true
 
@@ -86,6 +88,7 @@ jobs:
           echo ""
           echo "=========================================="
           echo "        HTTP/2 TEST"
+          echo "        Chrome User-Agent"
           echo "=========================================="
 
           rm -f /tmp/naukri-http2.html
@@ -93,6 +96,7 @@ jobs:
           curl -v \
             --http2 \
             --max-time 15 \
+            -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36" \
             https://www.naukri.com/ \
             -o /tmp/naukri-http2.html || true
 
