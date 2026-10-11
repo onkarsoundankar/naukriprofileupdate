@@ -14,7 +14,7 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    headless: true,
+    headless: false,
     viewport: null,
 
     launchOptions: {
