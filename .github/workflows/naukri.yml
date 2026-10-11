@@ -1,3 +1,4 @@
+```yaml
 name: Naukri Profile Update
 
 on:
@@ -12,7 +13,6 @@ jobs:
     timeout-minutes: 10
 
     steps:
-
       # ==========================================
       # Checkout Repository
       # ==========================================
@@ -36,118 +36,11 @@ jobs:
       # ==========================================
       # Install Playwright + Chromium
       # ==========================================
-      - name: Install Playwright
+      - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       # ==========================================
       # Test Naukri Connectivity
       # ==========================================
-      - name: Test Naukri HTTP protocols
-        run: |
-
-          echo "=========================================="
-          echo "        NAUKRI DNS TEST"
-          echo "=========================================="
-
-          getent hosts www.naukri.com || true
-
-          echo ""
-          echo "=========================================="
-          echo "        HTTP/1.1 TEST"
-          echo "        Chrome User-Agent"
-          echo "=========================================="
-
-          rm -f /tmp/naukri-http1.html
-
-          curl -v \
-            --http1.1 \
-            --max-time 15 \
-            -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36" \
-            https://www.naukri.com/ \
-            -o /tmp/naukri-http1.html || true
-
-          echo ""
-          echo "========== HTTP/1.1 Response Size =========="
-
-          if [ -f /tmp/naukri-http1.html ]; then
-            wc -c /tmp/naukri-http1.html
-          else
-            echo "No HTTP/1.1 response file created"
-          fi
-
-          echo ""
-          echo "========== HTTP/1.1 First 500 Characters =========="
-
-          if [ -f /tmp/naukri-http1.html ]; then
-            head -c 500 /tmp/naukri-http1.html
-          else
-            echo "No response received"
-          fi
-
-          echo ""
-          echo ""
-          echo "=========================================="
-          echo "        HTTP/2 TEST"
-          echo "        Chrome User-Agent"
-          echo "=========================================="
-
-          rm -f /tmp/naukri-http2.html
-
-          curl -v \
-            --http2 \
-            --max-time 15 \
-            -A "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36" \
-            https://www.naukri.com/ \
-            -o /tmp/naukri-http2.html || true
-
-          echo ""
-          echo "========== HTTP/2 Response Size =========="
-
-          if [ -f /tmp/naukri-http2.html ]; then
-            wc -c /tmp/naukri-http2.html
-          else
-            echo "No HTTP/2 response file created"
-          fi
-
-          echo ""
-          echo "========== HTTP/2 First 500 Characters =========="
-
-          if [ -f /tmp/naukri-http2.html ]; then
-            head -c 500 /tmp/naukri-http2.html
-          else
-            echo "No response received"
-          fi
-
-          echo ""
-          echo ""
-          echo "=========================================="
-          echo "        Naukri Connectivity Test Complete"
-          echo "=========================================="
-
-      # ==========================================
-      # Run Playwright Automation
-      # ==========================================
-      - name: Run Naukri automation
-        run: |
-          xvfb-run \
-            --auto-servernum \
-            --server-args="-screen 0 1920x1080x24" \
-            npx playwright test tests/naukri.spec.js
-
-        env:
-          NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
-          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-
-      # ==========================================
-      # Upload Playwright Debug Artifacts
-      # ==========================================
-      - name: Upload Playwright artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: naukri-debug
-          path: |
-            playwright-report/
-            test-results/
-            naukri-homepage.png
-            after-login.png
+      - name:
+```
