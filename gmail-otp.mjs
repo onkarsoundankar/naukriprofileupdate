@@ -105,4 +105,3 @@ export async function getNaukriOtp(loginStartedAt, timeoutMs = 120000) {
     'No usable new Naukri OTP was extracted. Review Gmail metadata logs.'
   );
 }
-```
