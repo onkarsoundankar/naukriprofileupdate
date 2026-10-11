@@ -1,7 +1,11 @@
+
 import 'dotenv/config';
 import { test } from '@playwright/test';
+import { getNaukriOtp } from '../gmail-otp.mjs';
 
 test('Update Naukri Profile', async ({ page }) => {
+  test.setTimeout(180000);
+
   const headlines = [
     "4+ YOE | Playwright Automation | JavaScript | Manual Testing | Functional Testing | Regression Testing | POM | Performance Testing JMeter | Test Case Creation | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP",
     "Senior Engineer | 4+ YOE | Playwright | JavaScript | Automation Testing | Manual Testing | Functional Testing | Regression Testing | POM Framework | JMeter Performance Testing | Test Case Design | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP",
@@ -21,14 +25,6 @@ test('Update Naukri Profile', async ({ page }) => {
     timeout: 60000
   });
 
-  console.log('Initial URL:', page.url());
-  console.log('Initial title:', await page.title());
-
-  await page.screenshot({
-    path: 'naukri-homepage.png',
-    fullPage: true
-  });
-
   await page.locator('#login_Layer').click();
 
   await page.getByLabel('Email ID / Username')
@@ -37,12 +33,14 @@ test('Update Naukri Profile', async ({ page }) => {
   await page.getByLabel('Password')
     .fill(process.env.NAUKRI_PASSWORD);
 
-  // Observe likely login POST responses before submitting.
+  // Capture the start time immediately before submitting the login form.
+  const loginStartedAt = Date.now();
+
   const loginResponsePromise = page.waitForResponse(
     response =>
       response.request().method() === 'POST' &&
-      /login|authenticate|auth/i.test(response.url()),
-    { timeout: 15000 }
+      /central-login-services\/v1\/login/i.test(response.url()),
+    { timeout: 20000 }
   ).catch(() => null);
 
   await page.locator('button.btn-primary.loginButton').click();
@@ -50,73 +48,118 @@ test('Update Naukri Profile', async ({ page }) => {
   const loginResponse = await loginResponsePromise;
 
   if (loginResponse) {
-    console.log('Login response URL:', loginResponse.url());
-    console.log('Login response status:', loginResponse.status());
-    console.log(
-      'Login response content type:',
-      loginResponse.headers()['content-type'] || 'unknown'
-    );
-
-    const contentType =
-      loginResponse.headers()['content-type'] || '';
-
-    if (contentType.includes('application/json')) {
-      const responseBody = await loginResponse.text().catch(() => '');
-      console.log(
-        'Login response body:',
-        responseBody.slice(0, 1500)
-      );
-    }
+    console.log('Login HTTP status:', loginResponse.status());
   } else {
-    console.log('No matching login POST response detected within 15 seconds.');
+    console.log('Login response was not detected.');
   }
 
-  await page.waitForTimeout(5000);
+  // Wait for Naukri to render its next screen.
+  await page.waitForTimeout(3000);
 
-  console.log('After login URL:', page.url());
-  console.log('After login title:', await page.title());
-
-  const pageText = (
-    await page.locator('body').innerText().catch(() => '')
-  ).slice(0, 4000);
-
-  console.log('========== LOGIN DIAGNOSTICS ==========');
-  console.log('Visible page text:', pageText);
-
-  const diagnosticChecks = [
-    ['OTP mention', /\botp\b/i],
-    ['One-time password', /one.time password/i],
-    ['Verification code', /verification code/i],
-    ['Verify email', /verify your email/i],
-    ['Access denied', /access denied/i],
-    ['Something went wrong', /something went wrong/i],
-    ['Incorrect credentials', /incorrect.{0,30}(password|credential)/i],
-    ['Invalid credentials', /invalid.{0,30}(password|credential)/i]
-  ];
-
-  for (const [label, pattern] of diagnosticChecks) {
-    console.log(`${label}: ${pattern.test(pageText)}`);
-  }
+  const pageText = await page.locator('body').innerText().catch(() => '');
+  console.log('OTP form visible:', /\bOTP\b/i.test(pageText));
+  console.log(
+    'Visible textbox count:',
+    await page.getByRole('textbox').count()
+  );
+  console.log(
+    'Visible button names:',
+    await page.getByRole('button').allTextContents()
+  );
 
   const viewProfile = page.getByRole('link', {
     name: 'View profile'
   });
 
-  console.log('View profile link count:', await viewProfile.count());
+  if (await viewProfile.count() === 0) {
+    if (!/\bOTP\b/i.test(pageText)) {
+      await page.screenshot({
+        path: 'after-login.png',
+        fullPage: true
+      });
 
-  await page.screenshot({
-    path: 'after-login.png',
-    fullPage: true
+      throw new Error(
+        'Login did not reach the profile or an identifiable OTP screen. ' +
+        'Inspect after-login.png.'
+      );
+    }
+
+    // Retrieve the OTP from Gmail without printing it.
+    const otp = await getNaukriOtp(loginStartedAt, 90000);
+
+    // Try common OTP input patterns. If Naukri changes its UI,
+    // stop rather than guessing which field to fill.
+    const otpCandidates = [
+      page.getByLabel(/otp|verification code|one.time password/i),
+      page.getByPlaceholder(/otp|verification code|one.time password/i),
+      page.locator('input[autocomplete="one-time-code"]'),
+      page.locator('input[inputmode="numeric"]')
+    ];
+
+    let otpInput = null;
+
+    for (const candidate of otpCandidates) {
+      const count = await candidate.count().catch(() => 0);
+
+      if (count === 1 && await candidate.isVisible().catch(() => false)) {
+        otpInput = candidate;
+        break;
+      }
+    }
+
+    if (!otpInput) {
+      await page.screenshot({
+        path: 'otp-form.png',
+        fullPage: true
+      });
+
+      throw new Error(
+        'Could not identify one unique visible OTP input. ' +
+        'Inspect otp-form.png and adjust the selector.'
+      );
+    }
+
+    await otpInput.fill(otp);
+
+    const verifyButton = page.getByRole('button', {
+      name: /^verify$/i
+    });
+
+    if (await verifyButton.count() !== 1) {
+      await page.screenshot({
+        path: 'otp-form.png',
+        fullPage: true
+      });
+
+      throw new Error(
+        'Could not identify one unique Verify button. ' +
+        'Inspect otp-form.png.'
+      );
+    }
+
+    await verifyButton.click();
+
+    // Wait for Naukri to process the verification.
+    await page.waitForTimeout(5000);
+  }
+
+  const profileLink = page.getByRole('link', {
+    name: 'View profile'
   });
 
-  if (await viewProfile.count() === 0) {
+  if (await profileLink.count() === 0) {
+    await page.screenshot({
+      path: 'after-otp.png',
+      fullPage: true
+    });
+
     throw new Error(
-      'Login did not reach the profile. Inspect the login response ' +
-      'and after-login.png artifact.'
+      'Profile link not found after login/OTP. ' +
+      'Inspect after-otp.png.'
     );
   }
 
-  await viewProfile.click();
+  await profileLink.click();
 
   await page.getByRole('button', {
     name: 'Edit resume headline'
@@ -125,22 +168,23 @@ test('Update Naukri Profile', async ({ page }) => {
   const randomHeadline =
     headlines[Math.floor(Math.random() * headlines.length)];
 
-  console.log('Selected headline:', randomHeadline);
-
   const headline = page.getByRole('textbox', {
     name: 'Resume headline'
   });
 
   await headline.fill(randomHeadline);
-  await page.locator('button.btn-dark-ot:visible').click();
 
-  await page.reload({
-    waitUntil: 'domcontentloaded',
-    timeout: 60000
+  await page.getByRole('button', {
+    name: 'Save'
+  }).click();
+
+  // Verify that the save operation completed before ending the test.
+  await page.waitForTimeout(3000);
+
+  console.log('Resume headline save action completed.');
+
+  await page.screenshot({
+    path: 'headline-updated.png',
+    fullPage: true
   });
-
-  await page.waitForTimeout(5000);
-
-  console.log('Final URL:', page.url());
-  console.log('Naukri profile update flow completed.');
 });
