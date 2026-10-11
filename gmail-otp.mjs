@@ -1,4 +1,3 @@
-```js
 import { google } from 'googleapis';
 import fs from 'node:fs/promises';
 
