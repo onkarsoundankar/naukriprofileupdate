@@ -1,10 +1,9 @@
-// @ts-check
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
 
-  fullyParallel: true,
+  fullyParallel: false,
 
   forbidOnly: !!process.env.CI,
 
@@ -15,14 +14,8 @@ export default defineConfig({
   reporter: 'html',
 
   use: {
-    // Xvfb on GitHub Actions provides the virtual display
     headless: false,
-
     viewport: null,
-
-    // Use a normal Chrome browser User-Agent
-    userAgent:
-      'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36',
 
     launchOptions: {
       args: [
@@ -37,6 +30,10 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
+      use: {
+        browserName: 'chromium',
+      },
     },
   ],
 });
+
