@@ -23,50 +23,6 @@ test('Update Naukri Profile', async ({ page }) => {
   ];
 
 
-  const isVisible = async locator =>
-    locator.isVisible().catch(() => false);
-
-  const profileLink = page.getByRole('link', {
-    name: 'View profile'
-  });
-
-  const verifyButton = page.getByRole('button', {
-    name: /^verify$/i
-  });
-
-  const getOtpButton = page.getByRole('button', {
-    name: /^get otp$/i
-  });
-
-  const useOtpButton = page.getByRole('button', {
-    name: /use otp to login/i
-  });
-
-  async function detectState(timeoutMs = 15000) {
-    const deadline = Date.now() + timeoutMs;
-
-    while (Date.now() < deadline) {
-      if (await isVisible(profileLink)) {
-        return 'profile';
-      }
-
-      if (await isVisible(verifyButton)) {
-        return 'verify';
-      }
-
-      if (await isVisible(getOtpButton)) {
-        return 'get-otp';
-      }
-
-      if (await isVisible(useOtpButton)) {
-        return 'use-otp';
-      }
-
-      await page.waitForTimeout(500);
-    }
-
-    return 'unknown';
-  }
 
   await page.goto('https://www.naukri.com/', {
     waitUntil: 'domcontentloaded',
@@ -85,7 +41,8 @@ test('Update Naukri Profile', async ({ page }) => {
 
   await page.getByText('View profile', { exact: true }).click();
 
-await page.getByRole('button', { name: 'Edit resume headline' }).click();
+ await page.getByRole('button', { name: 'Edit resume headline' }).click();
+
   const headline =
     headlines[Math.floor(Math.random() * headlines.length)];
 
