@@ -4,7 +4,7 @@ import { test } from '@playwright/test';
 import { getNaukriOtp } from '../gmail-otp.mjs';
 
 test('Update Naukri Profile', async ({ page }) => {
-  test.setTimeout(240000);
+  test.setTimeout(12000);
 
   const headlines = [
     '4+ YOE | Playwright Automation | JavaScript | Manual Testing | Functional Testing | Regression Testing | POM | Performance Testing JMeter | Test Case Creation | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP',
