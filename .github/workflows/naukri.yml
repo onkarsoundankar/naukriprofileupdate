@@ -30,13 +30,19 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Check Naukri connectivity
+      - name: Diagnose Naukri connectivity
         continue-on-error: true
         run: |
-          echo "Checking HTTPS connectivity..."
-          curl -sS -L --max-time 20 \
+          echo "===== Testing HTTP/1.1 ====="
+          curl --http1.1 -sS -L --max-time 30 \
             -o /dev/null \
-            -w "HTTP status: %{http_code}\n" \
+            -w "HTTP/1.1 status: %{http_code}\n" \
+            https://www.naukri.com/ || true
+
+          echo "===== Testing HTTP/2 ====="
+          curl --http2 -sS -L --max-time 30 \
+            -o /dev/null \
+            -w "HTTP/2 status: %{http_code}\n" \
             https://www.naukri.com/ || true
 
       - name: Run Naukri Playwright test

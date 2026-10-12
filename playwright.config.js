@@ -1,41 +1,26 @@
+
 import { defineConfig } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
 
-  fullyParallel: false,
+  timeout: 240000,
+  retries: 0,
+  workers: 1,
 
-  forbidOnly: !!process.env.CI,
+  reporter: 'list',
 
-  retries: process.env.CI ? 2 : 0,
-
-  workers: process.env.CI ? 1 : undefined,
-
-  reporter: 'html',
+  outputDir: 'test-results',
 
   use: {
-    headless: false,
-    video: 'on',
-    screenshot: 'on',
-    viewport: null,
+    headless: true,
 
     launchOptions: {
-      args: [
-        '--start-maximized',
-        '--window-size=1920,1080',
-      ],
+      args: ['--disable-http2']
     },
 
-    trace: 'on-first-retry',
-  },
-
-  projects: [
-    {
-      name: 'chromium',
-      use: {
-        browserName: 'chromium',
-      },
-    },
-  ],
+    video: 'on',
+    screenshot: 'on',
+    trace: 'retain-on-failure'
+  }
 });
-
