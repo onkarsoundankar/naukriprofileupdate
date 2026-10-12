@@ -24,20 +24,22 @@ test('Update Naukri Profile', async ({ page }) => {
 
 
 
-  await page.goto('https://www.naukri.com/', {
+  await page.goto('https://www.naukri.com/nlogin/login?URL=https://www.naukri.com/mnjuser/homepage', {
     waitUntil: 'domcontentloaded',
     timeout: 60000
   });
 
   await page.locator('#login_Layer').click();
 
-  await page.getByLabel('Email ID / Username')
+  await page.locator('#usernameField')
     .fill(process.env.NAUKRI_USERNAME);
 
-  await page.getByLabel('Password')
+  await page.locator('#passwordField')
     .fill(process.env.NAUKRI_PASSWORD);
 
-  await page.locator('button.btn-primary.loginButton').click();
+    await page.locator('button').filter({ hasText: 'Login' }).first().click();
+
+  //await page.locator('button.btn-primary.loginButton').click();
 
   await page.getByText('View profile', { exact: true }).click();
 
@@ -47,6 +49,7 @@ test('Update Naukri Profile', async ({ page }) => {
     headlines[Math.floor(Math.random() * headlines.length)];
 
 
+console.log('Selected resume headline:', headline);
 
   await page.getByRole('textbox', {
     name: 'Resume headline'
