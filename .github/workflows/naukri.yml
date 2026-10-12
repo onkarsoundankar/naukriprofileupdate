@@ -74,7 +74,7 @@ jobs:
           xvfb-run \
             --auto-servernum \
             --server-args="-screen 0 1920x1080x24" \
-            npx playwright test tests/naukri.spec.js
+            npx playwright test tests/naukri.spec.js --headed
 
       - name: Upload debugging artifacts
         if: always()
