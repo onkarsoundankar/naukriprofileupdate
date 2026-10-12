@@ -1,95 +1,155 @@
 
 import 'dotenv/config';
-import { test, expect } from '@playwright/test';
+import { test } from '@playwright/test';
 import { getNaukriOtp } from '../gmail-otp.mjs';
 
 test.describe.configure({ retries: 0 });
 
 test('Update Naukri Profile', async ({ page }) => {
-  test.setTimeout(180000);
-
-  const headlines = [
-    '4+ YOE | Playwright Automation | JavaScript | Manual Testing | Functional Testing | Regression Testing | POM | Performance Testing JMeter | Test Case Creation | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP',
-
-    'Senior Engineer | 4+ YOE | Playwright | JavaScript | Automation Testing | Manual Testing | Functional Testing | Regression Testing | POM Framework | JMeter Performance Testing | Test Case Design | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP',
-
-    '4+ YOE | QA Automation Engineer | Playwright | JavaScript | POM Framework | Automation Testing | Manual Testing | Functional Testing | Regression Testing | Smoke Testing | JMeter | Performance Testing | Test Case Creation | SDLC | STLC | Agile | Healthcare | Insurance | Claims | HIPAA | HL7 | GCP',
-
-    '4+ YOE | Playwright Automation Engineer | JavaScript | QA Automation | Manual Testing | Functional Testing | Regression Testing | Smoke Testing | POM | JMeter | Performance Testing | Test Case Design | SDLC | STLC | Agile | US Healthcare | Insurance | Claims | Clinical Trials | HIPAA | HL7 | CFR Part 11 | GCP',
-
-    'Senior Engineer with 4+ YOE | Playwright Automation | JavaScript | Manual & Automation Testing | POM | Functional Testing | Regression Testing | JMeter Performance Testing | Test Case Creation | Agile | SDLC | STLC | US Healthcare | Insurance | Claims | HIPAA | HL7 | Clinical Trials | CFR Part 11 | GCP',
-
-    '4+ YOE | Playwright | JavaScript | QA Automation | Manual Testing | Functional Testing | Regression Testing | Smoke Testing | POM Framework | Performance Testing | JMeter | Test Case Design | SDLC | STLC | Agile | Healthcare | Claims | Insurance | HIPAA | HL7 | GCP',
-
-    '4+ YOE | Playwright Automation | JavaScript | Manual Testing | Automation Testing | POM Framework | Functional & Regression Testing | Smoke Testing | JMeter Performance Testing | Test Case Creation | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | Clinical Trials | HIPAA | HL7 | CFR Part 11 | GCP'
-  ];
+  test.setTimeout(240000);
 
   const username = process.env.NAUKRI_USERNAME;
   const password = process.env.NAUKRI_PASSWORD;
 
   if (!username || !password) {
-    throw new Error('Naukri credentials are missing from environment variables.');
+    throw new Error(
+      'NAUKRI_USERNAME or NAUKRI_PASSWORD is missing from environment variables.'
+    );
   }
 
-  // Never print credentials or OTP values.
-  page.setDefaultTimeout(15000);
+  const headlines = [
+    '4+ YOE | Playwright Automation | JavaScript | Manual Testing | Functional Testing | Regression Testing | POM | Performance Testing JMeter | Test Case Creation | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP',
+    'Senior Engineer | 4+ YOE | Playwright | JavaScript | Automation Testing | Manual Testing | Functional Testing | Regression Testing | POM Framework | JMeter Performance Testing | Test Case Design | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP',
+    '4+ YOE | QA Automation Engineer | Playwright | JavaScript | POM Framework | Automation Testing | Manual Testing | Functional Testing | Regression Testing | Smoke Testing | JMeter | Performance Testing | Test Case Creation | SDLC | STLC | Agile | Healthcare | Insurance | Claims | HIPAA | HL7 | GCP',
+    '4+ YOE | Playwright Automation Engineer | JavaScript | QA Automation | Manual Testing | Functional Testing | Regression Testing | Smoke Testing | POM | JMeter | Performance Testing | Test Case Design | SDLC | STLC | Agile | US Healthcare | Insurance | Claims | Clinical Trials | HIPAA | HL7 | CFR Part 11 | GCP',
+    '4+ YOE | Playwright | JavaScript | QA Automation | Manual Testing | Functional Testing | Regression Testing | Smoke Testing | POM Framework | Performance Testing | JMeter | Test Case Design | SDLC | STLC | Agile | Healthcare | Claims | Insurance | HIPAA | HL7 | GCP'
+  ];
 
-  const loginUrl =
-    'https://www.naukri.com/nlogin/login?URL=https://www.naukri.com/mnjuser/homepage';
+  const selectedHeadline =
+    headlines[Math.floor(Math.random() * headlines.length)];
+
+  // Retry navigation for transient connection failures.
+  async function navigateWithRetry(url, attempts = 3) {
+    let lastError;
+
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        console.log(`Navigation attempt ${attempt}/${attempts}`);
+
+        await page.goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000
+        });
+
+        console.log('Navigation completed:', page.url());
+        return;
+      } catch (error) {
+        lastError = error;
+        console.log(
+          `Navigation attempt ${attempt} failed: ${error.message}`
+        );
+
+        if (attempt < attempts) {
+          await page.waitForTimeout(3000);
+        }
+      }
+    }
+
+    throw lastError;
+  }
+
+  async function screenshot(name) {
+    await page.screenshot({
+      path: `test-results/${name}.png`,
+      fullPage: true
+    }).catch(() => {});
+  }
+
+  async function firstVisible(locator) {
+    const count = await locator.count();
+
+    for (let i = 0; i < count; i++) {
+      const element = locator.nth(i);
+
+      if (await element.isVisible().catch(() => false)) {
+        return element;
+      }
+    }
+
+    return null;
+  }
 
   console.log('Opening Naukri login page...');
 
-  await page.goto(loginUrl, {
-    waitUntil: 'domcontentloaded',
-    timeout: 60000
-  });
+  await navigateWithRetry(
+    'https://www.naukri.com/nlogin/login?URL=https://www.naukri.com/mnjuser/homepage'
+  );
 
-  await page.locator('#usernameField').waitFor({
+  const usernameField = page.locator('#usernameField');
+  const passwordField = page.locator('#passwordField');
+
+  await usernameField.waitFor({
     state: 'visible',
-    timeout: 20000
+    timeout: 30000
   });
 
-  await page.locator('#usernameField').fill(username);
-  await page.locator('#passwordField').fill(password);
+  await usernameField.fill(username);
+  await passwordField.fill(password);
 
-  // Start the timestamp immediately before submitting credentials.
+  // Click Login only once to avoid generating duplicate OTPs.
+  const loginButton = await firstVisible(
+    page.getByRole('button', { name: /^Login$/i })
+  );
+
+  if (!loginButton) {
+    await screenshot('login-button-not-found');
+    throw new Error('Could not find a visible Login button.');
+  }
+
   const loginStartedAt = Date.now();
 
   console.log('Submitting login form once...');
+  await loginButton.click();
 
-  await page.locator('#login_Layer')
-    .getByRole('button', { name: /^Login$/i })
-    .click()
-    .catch(async () => {
-      // Fallback for pages where Login is outside #login_Layer.
-      await page.getByRole('button', { name: /^Login$/i }).first().click();
-    });
+  // Wait for either an OTP challenge or a real signed-in indicator.
+  try {
+    await page.waitForFunction(
+      () => {
+        const body = document.body?.innerText || '';
 
-  // Wait for either the OTP screen or a logged-in page.
-  await page.waitForTimeout(3000);
+        const otpPrompt =
+          /enter the otp sent to|verify otp|verify your otp/i.test(body);
 
-  console.log('URL after login submission:', page.url());
+        const signedIn =
+          /view profile|my profile|edit resume headline/i.test(body);
 
-  const otpPrompt = page.getByText(/Enter the OTP sent to/i).first();
+        return otpPrompt || signedIn;
+      },
+      null,
+      { timeout: 20000 }
+    );
+  } catch {
+    await screenshot('login-state-not-detected');
 
-  const otpRequired = await otpPrompt.isVisible().catch(() => false);
+    throw new Error(
+      'Neither an OTP prompt nor a signed-in profile indicator appeared after login submission.'
+    );
+  }
+
+  let bodyText = await page.locator('body').innerText().catch(() => '');
+  let otpRequired =
+    /enter the otp sent to|verify otp|verify your otp/i.test(bodyText);
 
   if (otpRequired) {
-    console.log('OTP screen detected. Waiting for Gmail OTP...');
+    console.log('OTP challenge detected. Waiting for the new Gmail OTP...');
 
-    await page.screenshot({
-      path: 'after-selecting-otp.png',
-      fullPage: true
-    });
-
-    // The Gmail function must return the OTP received for this login attempt.
     const otp = await getNaukriOtp(loginStartedAt, 120000);
 
     if (!/^\d{4,8}$/.test(otp)) {
-      throw new Error('Gmail returned an OTP with an unexpected format.');
+      throw new Error('The extracted OTP does not have a valid format.');
     }
 
-    // Prefer an input explicitly identified as an OTP field.
+    // Prefer a specifically labelled OTP input.
     const otpSelectors = [
       'input[autocomplete="one-time-code"]',
       'input[placeholder*="OTP" i]',
@@ -98,185 +158,213 @@ test('Update Naukri Profile', async ({ page }) => {
       'input[id*="otp" i]'
     ];
 
-    let otpInput = null;
+    let otpField = null;
 
     for (const selector of otpSelectors) {
-      const candidate = page.locator(selector).first();
+      otpField = await firstVisible(page.locator(selector));
 
-      if (await candidate.isVisible().catch(() => false)) {
-        otpInput = candidate;
-        break;
-      }
+      if (otpField) break;
     }
 
-    // Fallback: inspect visible, editable text-like inputs only.
-    if (!otpInput) {
-      const candidates = page.locator(
-        'input:visible:not([type="hidden"]):not([type="password"]):not([type="email"]):not([type="search"])'
-      );
+    if (otpField) {
+      // Handle a single OTP input.
+      await otpField.fill(otp);
+    } else {
+      // Some pages use one input per OTP digit.
+      const visibleInputs = [];
+      const inputs = page.locator('input');
+      const inputCount = await inputs.count();
 
-      const count = await candidates.count();
+      for (let i = 0; i < inputCount; i++) {
+        const input = inputs.nth(i);
 
-      for (let i = 0; i < count; i++) {
-        const candidate = candidates.nth(i);
+        if (!(await input.isVisible().catch(() => false))) continue;
+        if (!(await input.isEditable().catch(() => false))) continue;
 
-        const details = await candidate.evaluate(el => ({
-          disabled: el.disabled,
-          readOnly: el.readOnly,
-          type: el.type,
-          maxLength: el.maxLength
-        }));
+        const type = await input.getAttribute('type');
 
-        if (
-          !details.disabled &&
-          !details.readOnly &&
-          ['text', 'tel', 'number', ''].includes(details.type)
-        ) {
-          otpInput = candidate;
+        if (type === 'password' || type === 'hidden') continue;
+
+        visibleInputs.push(input);
+      }
+
+      if (visibleInputs.length < otp.length) {
+        await screenshot('otp-input-not-found');
+
+        throw new Error(
+          'Could not identify the OTP input. Inspect the OTP page screenshot.'
+        );
+      }
+
+      // Only use digit-by-digit filling when there are enough inputs
+      // and each of the first OTP-length inputs accepts a single digit.
+      const digitInputs = visibleInputs.slice(0, otp.length);
+      let supportsSeparateDigits = true;
+
+      for (const input of digitInputs) {
+        const maxLength = await input.getAttribute('maxlength');
+
+        if (maxLength !== '1') {
+          supportsSeparateDigits = false;
           break;
         }
       }
+
+      if (!supportsSeparateDigits) {
+        await screenshot('otp-input-not-found');
+
+        throw new Error(
+          'The OTP field was not identifiable. Stopping rather than typing the OTP into an unrelated field.'
+        );
+      }
+
+      for (let i = 0; i < otp.length; i++) {
+        await digitInputs[i].fill(otp[i]);
+      }
     }
 
-    if (!otpInput) {
-      await page.screenshot({
-        path: 'otp-input-not-found.png',
-        fullPage: true
-      });
+    const verifyButton = await firstVisible(
+      page.getByRole('button', {
+        name: /^(verify|verify otp|submit)$/i
+      })
+    );
 
-      throw new Error(
-        'OTP was retrieved, but the OTP input could not be identified. Inspect otp-input-not-found.png.'
-      );
+    if (!verifyButton) {
+      await screenshot('verify-button-not-found');
+      throw new Error('Could not find a visible OTP Verify button.');
     }
 
-    // Fill the OTP without logging its value.
-    await otpInput.fill(otp);
-
-    console.log('OTP entered. Submitting verification...');
-
-    const verifyButton = page.getByRole('button', {
-      name: /^(verify|verify otp|submit)$/i
-    }).first();
-
-    await verifyButton.waitFor({
-      state: 'visible',
-      timeout: 10000
-    });
-
+    console.log('Submitting OTP once...');
     await verifyButton.click();
 
-    // Wait for verification to finish before touching the profile.
-    await page.waitForTimeout(5000);
+    // Wait for the OTP challenge to disappear or a signed-in indicator.
+    await page.waitForFunction(
+      () => {
+        const body = document.body?.innerText || '';
 
-    await page.screenshot({
-      path: 'after-otp-verification.png',
-      fullPage: true
-    });
-  } else {
-    console.log('OTP prompt not detected immediately.');
+        const otpPrompt =
+          /enter the otp sent to|verify otp|verify your otp/i.test(body);
+
+        const signedIn =
+          /view profile|my profile|edit resume headline/i.test(body);
+
+        return signedIn || !otpPrompt;
+      },
+      null,
+      { timeout: 30000 }
+    ).catch(() => {});
+
+    await page.waitForTimeout(2000);
   }
 
-  // Confirm that login actually succeeded.
-  const loggedIn = await page.waitForFunction(() => {
-    const url = location.href;
-    const text = document.body?.innerText ?? '';
+  bodyText = await page.locator('body').innerText().catch(() => '');
 
-    const otpStillVisible = /Enter the OTP sent to/i.test(text);
+  otpRequired =
+    /enter the otp sent to|verify otp|verify your otp/i.test(bodyText);
 
-    const loggedInUrl =
-      /mnjuser\/(homepage|profile|resume)/i.test(url);
-
-    const profileControlVisible =
-      [...document.querySelectorAll('a, button')]
-        .some(el =>
-          el.getClientRects().length > 0 &&
-          /view profile|my profile|edit resume headline/i.test(
-            el.innerText || el.getAttribute('aria-label') || ''
-          )
-        );
-
-    return !otpStillVisible && (loggedInUrl || profileControlVisible);
-  }, { timeout: 20000 }).then(() => true).catch(() => false);
-
-  if (!loggedIn) {
-    await page.screenshot({
-      path: 'login-not-confirmed.png',
-      fullPage: true
-    });
-
-    const body = await page.locator('body').innerText().catch(() => '');
-
-    console.log('Final URL:', page.url());
-    console.log('Final title:', await page.title());
-    console.log('Final page content:', body.slice(0, 1500));
-
+  if (otpRequired) {
+    await screenshot('otp-verification-incomplete');
     throw new Error(
-      'Login was not confirmed. Inspect after-otp-verification.png and login-not-confirmed.png.'
+      'The OTP challenge is still visible. Login was not confirmed.'
     );
   }
 
-  console.log('Login confirmed. Opening profile...');
+  // Do not claim login succeeded merely because the login request returned.
+  let viewProfile = await firstVisible(
+    page.getByText('View profile', { exact: true })
+  );
 
-  // Prefer the profile link/control available on the authenticated page.
-  const viewProfile = page.getByText('View profile', { exact: true }).first();
+  let myProfile = await firstVisible(
+    page.getByText('My profile', { exact: true })
+  );
 
-  if (await viewProfile.isVisible().catch(() => false)) {
-    await viewProfile.click();
-  } else {
-    await page.goto('https://www.naukri.com/mnjuser/homepage', {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000
-    });
+  let editHeadline = await firstVisible(
+    page.getByRole('button', { name: /edit resume headline/i })
+  );
+
+  if (!viewProfile && !myProfile && !editHeadline) {
+    await screenshot('login-not-confirmed');
+
+    throw new Error(
+      'No profile-specific indicator was found. Login cannot be confirmed safely.'
+    );
   }
 
-  const editHeadline = page.getByRole('button', {
-    name: /edit resume headline/i
-  }).first();
+  console.log('Profile indicator detected. Opening profile...');
 
-  await editHeadline.waitFor({
-    state: 'visible',
-    timeout: 20000
-  });
+  if (viewProfile) {
+    await viewProfile.click();
+  } else if (myProfile) {
+    await myProfile.click();
+  } else if (!editHeadline) {
+    await navigateWithRetry(
+      'https://www.naukri.com/mnjuser/homepage'
+    );
+  }
 
-  await editHeadline.click();
+  await page.waitForTimeout(2000);
 
-  const headline = headlines[
-    Math.floor(Math.random() * headlines.length)
-  ];
+  // Locate the resume headline editor.
+  editHeadline = await firstVisible(
+    page.getByRole('button', { name: /edit resume headline/i })
+  );
 
-  const headlineInput = page.getByRole('textbox', {
-    name: /resume headline/i
-  });
+  if (editHeadline) {
+    await editHeadline.click();
+  } else {
+    const resumeHeadline = await firstVisible(
+      page.getByText('Resume headline', { exact: true })
+    );
 
-  await headlineInput.waitFor({ state: 'visible' });
-  await headlineInput.fill(headline);
+    if (resumeHeadline) {
+      console.log(
+        'Resume headline section found; looking for its edit control.'
+      );
+    } else {
+      // A transient navigation error may have interrupted the page.
+      await navigateWithRetry(
+        'https://www.naukri.com/mnjuser/homepage'
+      );
+    }
 
-  // Use the first visible Save button to avoid strict-mode ambiguity.
-  const saveButtons = page.getByRole('button', { name: /^Save$/i });
-  const saveCount = await saveButtons.count();
+    editHeadline = await firstVisible(
+      page.getByRole('button', { name: /edit resume headline/i })
+    );
 
-  let saveClicked = false;
-
-  for (let i = 0; i < saveCount; i++) {
-    const button = saveButtons.nth(i);
-
-    if (await button.isVisible().catch(() => false)) {
-      await button.click();
-      saveClicked = true;
-      break;
+    if (editHeadline) {
+      await editHeadline.click();
     }
   }
 
-  if (!saveClicked) {
-    throw new Error('Could not find a visible Save button for the headline.');
+  const headlineField = await firstVisible(
+    page.getByRole('textbox', { name: /resume headline/i })
+  );
+
+  if (!headlineField) {
+    await screenshot('headline-editor-not-found');
+
+    throw new Error(
+      'Could not find the Resume headline textbox. The page layout may have changed.'
+    );
   }
 
+  console.log('Updating resume headline...');
+  await headlineField.fill(selectedHeadline);
+
+  // Multiple Save buttons can exist on Naukri. Click a visible one only.
+  const saveButton = await firstVisible(
+    page.getByRole('button', { name: /^Save$/i })
+  );
+
+  if (!saveButton) {
+    await screenshot('save-button-not-found');
+    throw new Error('Could not find a visible Save button.');
+  }
+
+  await saveButton.click();
+
   await page.waitForTimeout(3000);
+  await screenshot('headline-updated');
 
-  await page.screenshot({
-    path: 'headline-updated.png',
-    fullPage: true
-  });
-
-  console.log('Resume headline save action completed.');
+  console.log('Resume headline update submitted.');
 });
