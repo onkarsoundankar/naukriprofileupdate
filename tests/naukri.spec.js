@@ -39,6 +39,14 @@ test('Update Naukri Profile', async ({ page }) => {
 
     await page.locator('button').filter({ hasText: 'Login' }).first().click();
 
+    console.log('Current URL:', page.url());
+console.log('Current title:', await page.title());
+
+console.log(
+  'View profile count:',
+  await page.getByText('View profile', { exact: true }).count()
+);
+
   //await page.locator('button.btn-primary.loginButton').click();
 
   await page.waitForLoadState('domcontentloaded');
