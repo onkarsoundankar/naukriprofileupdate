@@ -15,6 +15,8 @@ export default defineConfig({
 
   use: {
     headless: false,
+    video: 'on',
+    screenshot: 'on',
     viewport: null,
 
     launchOptions: {

@@ -1,16 +1,18 @@
 
-name: Naukri Profile Update - Headed Mode
+name: Naukri Profile Update
 
 on:
+  schedule:
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
-  schedule:
-    - cron: '0 * * * *'
+permissions:
+  contents: read
 
 jobs:
   update-profile:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout repository
@@ -20,73 +22,38 @@ jobs:
         uses: actions/setup-node@v6
         with:
           node-version: lts/*
+          cache: npm
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Configure Gmail OAuth token
-        env:
-          GMAIL_TOKEN_JSON: ${{ secrets.GMAIL_TOKEN_JSON }}
-        run: |
-          if [ -z "$GMAIL_TOKEN_JSON" ]; then
-            echo "GMAIL_TOKEN_JSON secret is missing"
-            exit 1
-          fi
-
-          printf '%s' "$GMAIL_TOKEN_JSON" > gmail-token.json
-          chmod 600 gmail-token.json
-
-          echo "Gmail OAuth token file configured."
-
-      - name: Install Playwright browsers
+      - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
-      - name: Test Naukri connectivity
+      - name: Check Naukri connectivity
+        continue-on-error: true
         run: |
-          echo "Checking Naukri DNS..."
-          getent hosts www.naukri.com || true
+          echo "Checking HTTPS connectivity..."
+          curl -sS -L --max-time 20 \
+            -o /dev/null \
+            -w "HTTP status: %{http_code}\n" \
+            https://www.naukri.com/ || true
 
-          echo "Testing HTTP/1.1..."
-          curl -v --http1.1 --max-time 15 \
-            https://www.naukri.com/ \
-            -o /tmp/naukri-http1.html || true
-
-          echo "HTTP/1.1 response size:"
-          if [ -f /tmp/naukri-http1.html ]; then
-            wc -c /tmp/naukri-http1.html
-          fi
-
-          echo "Testing HTTP/2..."
-          curl -v --http2 --max-time 15 \
-            https://www.naukri.com/ \
-            -o /tmp/naukri-http2.html || true
-
-          echo "HTTP/2 response size:"
-          if [ -f /tmp/naukri-http2.html ]; then
-            wc -c /tmp/naukri-http2.html
-          fi
-
-      - name: Run Playwright in headed mode
+      - name: Run Naukri Playwright test
         env:
           NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-        run: |
-          xvfb-run \
-            --auto-servernum \
-            --server-args="-screen 0 1920x1080x24" \
-            npx playwright test tests/naukri.spec.js --headed
+        run: xvfb-run --auto-servernum npx playwright test tests/naukri.spec.js --headed
 
-      - name: Upload debugging artifacts
+      - name: Upload videos and debugging files
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
-          name: naukri-headed-debug
-          if-no-files-found: warn
+          name: naukri-playwright-recordings-${{ github.run_number }}
           path: |
+            test-results/**/*.webm
+            test-results/**/*.png
+            test-results/**/*.md
             playwright-report/
-            test-results/
-            naukri-homepage.png
-            after-login.png
-            otp-form.png
-            after-otp.png
-            headline-updated.png
+          if-no-files-found: ignore
+          retention-days: 7
