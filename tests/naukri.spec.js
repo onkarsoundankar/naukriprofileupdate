@@ -3,15 +3,10 @@ import 'dotenv/config';
 import { test, expect } from '@playwright/test';
 import { getNaukriOtp } from '../gmail-otp.mjs';
 
+test.describe.configure({ retries: 0 });
+
 test('Update Naukri Profile', async ({ page }) => {
-  test.setTimeout(120000);
-
-  const username = process.env.NAUKRI_USERNAME;
-  const password = process.env.NAUKRI_PASSWORD;
-
-  if (!username || !password) {
-    throw new Error('NAUKRI_USERNAME or NAUKRI_PASSWORD is missing.');
-  }
+  test.setTimeout(180000);
 
   const headlines = [
     '4+ YOE | Playwright Automation | JavaScript | Manual Testing | Functional Testing | Regression Testing | POM | Performance Testing JMeter | Test Case Creation | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | HIPAA | Clinical Trials | HL7 | CFR Part 11 | GCP',
@@ -29,216 +24,259 @@ test('Update Naukri Profile', async ({ page }) => {
     '4+ YOE | Playwright Automation | JavaScript | Manual Testing | Automation Testing | POM Framework | Functional & Regression Testing | Smoke Testing | JMeter Performance Testing | Test Case Creation | SDLC | STLC | Agile | US Healthcare | Claims | Insurance | Clinical Trials | HIPAA | HL7 | CFR Part 11 | GCP'
   ];
 
-  // Open Naukri login page.
-  await page.goto(
-    'https://www.naukri.com/nlogin/login?URL=https://www.naukri.com/mnjuser/homepage',
-    {
-      waitUntil: 'domcontentloaded',
-      timeout: 60000
-    }
-  );
+  const username = process.env.NAUKRI_USERNAME;
+  const password = process.env.NAUKRI_PASSWORD;
 
-  console.log('Initial URL:', page.url());
-  console.log('Initial title:', await page.title());
+  if (!username || !password) {
+    throw new Error('Naukri credentials are missing from environment variables.');
+  }
 
-  // Fill login form.
-  const usernameField = page.locator('#usernameField');
-  const passwordField = page.locator('#passwordField');
+  // Never print credentials or OTP values.
+  page.setDefaultTimeout(15000);
 
-  await usernameField.waitFor({
+  const loginUrl =
+    'https://www.naukri.com/nlogin/login?URL=https://www.naukri.com/mnjuser/homepage';
+
+  console.log('Opening Naukri login page...');
+
+  await page.goto(loginUrl, {
+    waitUntil: 'domcontentloaded',
+    timeout: 60000
+  });
+
+  await page.locator('#usernameField').waitFor({
     state: 'visible',
-    timeout: 30000
+    timeout: 20000
   });
 
-  await usernameField.fill(username);
-  await passwordField.fill(password);
+  await page.locator('#usernameField').fill(username);
+  await page.locator('#passwordField').fill(password);
 
-  // Submit password login.
-  await page.getByRole('button', {
-    name: 'Login',
-    exact: true
-  }).click();
+  // Start the timestamp immediately before submitting credentials.
+  const loginStartedAt = Date.now();
 
-  // Allow the server response and client-side navigation to occur.
-  await page.waitForTimeout(4000);
+  console.log('Submitting login form once...');
 
-  console.log('After password login URL:', page.url());
-  console.log('After password login title:', await page.title());
-
-  // Capture the actual login result for diagnosis.
-  await page.screenshot({
-    path: 'after-password-login.png',
-    fullPage: true
-  });
-
-  const bodyText = await page.locator('body')
-    .innerText()
-    .catch(() => '');
-
-  console.log(
-    'Login page indicators:',
-    bodyText.slice(0, 1500)
-  );
-
-  // Check whether login has already reached the dashboard.
-  const viewProfile = page.getByText('View profile', {
-    exact: true
-  });
-
-  let loggedIn = await viewProfile.isVisible().catch(() => false);
-
-  // If password login did not succeed, inspect possible OTP flow.
-  if (!loggedIn) {
-    const loginError = page.getByText(
-      'Something went wrong. Please try again.',
-      { exact: true }
-    );
-
-    const hasLoginError = await loginError
-      .isVisible()
-      .catch(() => false);
-
-    const otpButton = page.getByRole('button', {
-      name: 'Use OTP to Login',
-      exact: true
+  await page.locator('#login_Layer')
+    .getByRole('button', { name: /^Login$/i })
+    .click()
+    .catch(async () => {
+      // Fallback for pages where Login is outside #login_Layer.
+      await page.getByRole('button', { name: /^Login$/i }).first().click();
     });
 
-    const hasOtpButton = await otpButton
-      .isVisible()
-      .catch(() => false);
+  // Wait for either the OTP screen or a logged-in page.
+  await page.waitForTimeout(3000);
 
-    if (hasLoginError) {
-      console.log(
-        'Naukri returned a login error after password submission.'
+  console.log('URL after login submission:', page.url());
+
+  const otpPrompt = page.getByText(/Enter the OTP sent to/i).first();
+
+  const otpRequired = await otpPrompt.isVisible().catch(() => false);
+
+  if (otpRequired) {
+    console.log('OTP screen detected. Waiting for Gmail OTP...');
+
+    await page.screenshot({
+      path: 'after-selecting-otp.png',
+      fullPage: true
+    });
+
+    // The Gmail function must return the OTP received for this login attempt.
+    const otp = await getNaukriOtp(loginStartedAt, 120000);
+
+    if (!/^\d{4,8}$/.test(otp)) {
+      throw new Error('Gmail returned an OTP with an unexpected format.');
+    }
+
+    // Prefer an input explicitly identified as an OTP field.
+    const otpSelectors = [
+      'input[autocomplete="one-time-code"]',
+      'input[placeholder*="OTP" i]',
+      'input[aria-label*="OTP" i]',
+      'input[name*="otp" i]',
+      'input[id*="otp" i]'
+    ];
+
+    let otpInput = null;
+
+    for (const selector of otpSelectors) {
+      const candidate = page.locator(selector).first();
+
+      if (await candidate.isVisible().catch(() => false)) {
+        otpInput = candidate;
+        break;
+      }
+    }
+
+    // Fallback: inspect visible, editable text-like inputs only.
+    if (!otpInput) {
+      const candidates = page.locator(
+        'input:visible:not([type="hidden"]):not([type="password"]):not([type="email"]):not([type="search"])'
+      );
+
+      const count = await candidates.count();
+
+      for (let i = 0; i < count; i++) {
+        const candidate = candidates.nth(i);
+
+        const details = await candidate.evaluate(el => ({
+          disabled: el.disabled,
+          readOnly: el.readOnly,
+          type: el.type,
+          maxLength: el.maxLength
+        }));
+
+        if (
+          !details.disabled &&
+          !details.readOnly &&
+          ['text', 'tel', 'number', ''].includes(details.type)
+        ) {
+          otpInput = candidate;
+          break;
+        }
+      }
+    }
+
+    if (!otpInput) {
+      await page.screenshot({
+        path: 'otp-input-not-found.png',
+        fullPage: true
+      });
+
+      throw new Error(
+        'OTP was retrieved, but the OTP input could not be identified. Inspect otp-input-not-found.png.'
       );
     }
 
-    if (hasOtpButton) {
-      console.log('Trying the OTP login option.');
+    // Fill the OTP without logging its value.
+    await otpInput.fill(otp);
 
-      await otpButton.click();
-      await page.waitForTimeout(2000);
+    console.log('OTP entered. Submitting verification...');
 
-      console.log('After selecting OTP URL:', page.url());
+    const verifyButton = page.getByRole('button', {
+      name: /^(verify|verify otp|submit)$/i
+    }).first();
 
-      await page.screenshot({
-        path: 'after-selecting-otp.png',
-        fullPage: true
-      });
+    await verifyButton.waitFor({
+      state: 'visible',
+      timeout: 10000
+    });
 
-      // This part assumes your existing getNaukriOtp() function
-      // retrieves the newest Naukri OTP from Gmail.
-      const otp = await getNaukriOtp();
+    await verifyButton.click();
 
-      if (!otp) {
-        throw new Error(
-          'No Naukri OTP was returned by getNaukriOtp().'
-        );
-      }
+    // Wait for verification to finish before touching the profile.
+    await page.waitForTimeout(5000);
 
-      // Locate the OTP field without assuming one specific HTML ID.
-      const otpField = page.locator(
-        'input[autocomplete="one-time-code"], input[name*="otp" i], input[id*="otp" i], input[placeholder*="otp" i]'
-      ).first();
-
-      await otpField.waitFor({
-        state: 'visible',
-        timeout: 15000
-      });
-
-      await otpField.fill(String(otp));
-
-      // Inspect the page's actual buttons before changing this
-      // selector if Naukri uses a different verification label.
-      const verifyButton = page.getByRole('button', {
-        name: /verify|submit|continue|login/i
-      }).first();
-
-      await verifyButton.click();
-
-      await page.waitForTimeout(5000);
-
-      await page.screenshot({
-        path: 'after-otp-verification.png',
-        fullPage: true
-      });
-
-      loggedIn = await viewProfile
-        .isVisible()
-        .catch(() => false);
-    }
+    await page.screenshot({
+      path: 'after-otp-verification.png',
+      fullPage: true
+    });
+  } else {
+    console.log('OTP prompt not detected immediately.');
   }
 
-  // Never attempt profile editing unless the dashboard is visible.
+  // Confirm that login actually succeeded.
+  const loggedIn = await page.waitForFunction(() => {
+    const url = location.href;
+    const text = document.body?.innerText ?? '';
+
+    const otpStillVisible = /Enter the OTP sent to/i.test(text);
+
+    const loggedInUrl =
+      /mnjuser\/(homepage|profile|resume)/i.test(url);
+
+    const profileControlVisible =
+      [...document.querySelectorAll('a, button')]
+        .some(el =>
+          el.getClientRects().length > 0 &&
+          /view profile|my profile|edit resume headline/i.test(
+            el.innerText || el.getAttribute('aria-label') || ''
+          )
+        );
+
+    return !otpStillVisible && (loggedInUrl || profileControlVisible);
+  }, { timeout: 20000 }).then(() => true).catch(() => false);
+
   if (!loggedIn) {
+    await page.screenshot({
+      path: 'login-not-confirmed.png',
+      fullPage: true
+    });
+
+    const body = await page.locator('body').innerText().catch(() => '');
+
     console.log('Final URL:', page.url());
     console.log('Final title:', await page.title());
-
-    const finalBody = await page.locator('body')
-      .innerText()
-      .catch(() => '');
-
-    console.log('Final page content:', finalBody.slice(0, 2000));
+    console.log('Final page content:', body.slice(0, 1500));
 
     throw new Error(
-      'Login was not confirmed. Inspect after-password-login.png, after-selecting-otp.png if created, and after-otp-verification.png if created.'
+      'Login was not confirmed. Inspect after-otp-verification.png and login-not-confirmed.png.'
     );
   }
 
-  console.log('Login confirmed. Opening profile.');
+  console.log('Login confirmed. Opening profile...');
 
-  await viewProfile.click();
+  // Prefer the profile link/control available on the authenticated page.
+  const viewProfile = page.getByText('View profile', { exact: true }).first();
 
-  // Open the resume headline editor.
-  const editHeadlineButton = page.getByRole('button', {
-    name: 'Edit resume headline'
-  });
+  if (await viewProfile.isVisible().catch(() => false)) {
+    await viewProfile.click();
+  } else {
+    await page.goto('https://www.naukri.com/mnjuser/homepage', {
+      waitUntil: 'domcontentloaded',
+      timeout: 60000
+    });
+  }
 
-  await editHeadlineButton.waitFor({
+  const editHeadline = page.getByRole('button', {
+    name: /edit resume headline/i
+  }).first();
+
+  await editHeadline.waitFor({
     state: 'visible',
-    timeout: 30000
+    timeout: 20000
   });
 
-  await editHeadlineButton.click();
+  await editHeadline.click();
 
-  // Select one headline randomly.
-  const headline =
-    headlines[Math.floor(Math.random() * headlines.length)];
+  const headline = headlines[
+    Math.floor(Math.random() * headlines.length)
+  ];
 
-  console.log('Selected resume headline:', headline);
-
-  const headlineField = page.getByRole('textbox', {
-    name: 'Resume headline'
+  const headlineInput = page.getByRole('textbox', {
+    name: /resume headline/i
   });
 
-  await headlineField.waitFor({
-    state: 'visible',
-    timeout: 15000
-  });
+  await headlineInput.waitFor({ state: 'visible' });
+  await headlineInput.fill(headline);
 
-  await headlineField.fill(headline);
+  // Use the first visible Save button to avoid strict-mode ambiguity.
+  const saveButtons = page.getByRole('button', { name: /^Save$/i });
+  const saveCount = await saveButtons.count();
 
-  await page.getByRole('button', {
-    name: 'Save',
-    exact: true
-  }).click();
+  let saveClicked = false;
 
-  // Wait for the save request/UI update.
+  for (let i = 0; i < saveCount; i++) {
+    const button = saveButtons.nth(i);
+
+    if (await button.isVisible().catch(() => false)) {
+      await button.click();
+      saveClicked = true;
+      break;
+    }
+  }
+
+  if (!saveClicked) {
+    throw new Error('Could not find a visible Save button for the headline.');
+  }
+
   await page.waitForTimeout(3000);
-
-  console.log('Save action completed.');
 
   await page.screenshot({
     path: 'headline-updated.png',
     fullPage: true
   });
 
-  // Verify the saved headline if the editor remains visible.
-  const savedHeadline = await page.getByRole('textbox', {
-    name: 'Resume headline'
-  }).inputValue().catch(() => null);
-
-  if (savedHeadline !== null) {
-    console.log('Headline field after save:', savedHeadline);
-  }
+  console.log('Resume headline save action completed.');
 });
