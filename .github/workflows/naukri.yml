@@ -1,6 +1,14 @@
 
 name: Naukri Profile Update
 
+- name: Check Naukri secret availability
+  env:
+    NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
+    NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+  run: |
+    test -n "$NAUKRI_USERNAME" && echo "Username secret is set" || echo "Username secret is missing"
+    test -n "$NAUKRI_PASSWORD" && echo "Password secret is set" || echo "Password secret is missing"
+
 on:
   schedule:
     - cron: '*/30 * * * *'
