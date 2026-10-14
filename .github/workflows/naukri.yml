@@ -1,13 +1,4 @@
-
 name: Naukri Profile Update
-
-- name: Check Naukri secret availability
-  env:
-    NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
-    NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-  run: |
-    test -n "$NAUKRI_USERNAME" && echo "Username secret is set" || echo "Username secret is missing"
-    test -n "$NAUKRI_PASSWORD" && echo "Password secret is set" || echo "Password secret is missing"
 
 on:
   schedule:
@@ -25,6 +16,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+
+      - name: Check Naukri secret availability
+        env:
+          NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
+          NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
+        run: |
+          test -n "$NAUKRI_USERNAME" && echo "Username secret is set" || { echo "Username secret is missing"; exit 1; }
+          test -n "$NAUKRI_PASSWORD" && echo "Password secret is set" || { echo "Password secret is missing"; exit 1; }
 
       - name: Setup Node.js
         uses: actions/setup-node@v6
@@ -59,15 +58,13 @@ jobs:
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
         run: xvfb-run --auto-servernum npx playwright test tests/naukri.spec.js --headed
 
-      - name: Upload videos and debugging files
+      - name: Upload debugging artifacts
         if: always()
         uses: actions/upload-artifact@v6
         with:
-          name: naukri-playwright-recordings-${{ github.run_number }}
+          name: naukri-playwright-debug-${{ github.run_number }}
           path: |
-            test-results/**/*.webm
-            test-results/**/*.png
-            test-results/**/*.md
+            test-results/
             playwright-report/
           if-no-files-found: ignore
           retention-days: 7

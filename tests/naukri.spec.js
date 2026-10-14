@@ -39,7 +39,6 @@ test('Update Naukri Profile', async ({ page }) => {
 
     await page.locator('button').filter({ hasText: 'Login' }).first().click();
 
-  
 
 console.log(
   'View profile count:',
