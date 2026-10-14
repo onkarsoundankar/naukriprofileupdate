@@ -56,7 +56,7 @@ jobs:
         env:
           NAUKRI_USERNAME: ${{ secrets.NAUKRI_USERNAME }}
           NAUKRI_PASSWORD: ${{ secrets.NAUKRI_PASSWORD }}
-        run: xvfb-run --auto-servernum npx playwright test tests/naukri.spec.js --headed
+        run: xvfb-run --auto-servernum npx playwright test tests/naukri.spec.js
 
       - name: Upload debugging artifacts
         if: always()
