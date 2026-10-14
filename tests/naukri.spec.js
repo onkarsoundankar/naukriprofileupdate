@@ -41,7 +41,9 @@ test('Update Naukri Profile', async ({ page }) => {
 
  // await page.locator('#passwordField').fill(process.env.NAUKRI_PASSWORD);
 
-    await page.locator('button').filter({ hasText: 'Login' }).first().click();
+ await page.locator('button.btn-primary.loginButton').click();
+  
+ //await page.locator('button').filter({ hasText: 'Login' }).first().click();
 
 
 console.log(
