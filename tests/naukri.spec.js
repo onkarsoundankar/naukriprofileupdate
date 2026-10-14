@@ -24,18 +24,22 @@ test('Update Naukri Profile', async ({ page }) => {
 
 
 
-  await page.goto('https://www.naukri.com/nlogin/login?URL=https://www.naukri.com/mnjuser/homepage', {
+  await page.goto('https://www.naukri.com', {
     waitUntil: 'domcontentloaded',
     timeout: 60000
   });
 
   await page.locator('#login_Layer').click();
 
-  await page.locator('#usernameField')
-    .fill(process.env.NAUKRI_USERNAME);
 
-  await page.locator('#passwordField')
-    .fill(process.env.NAUKRI_PASSWORD);
+
+  await page.getByRole('textbox', { name: 'Email ID / Username' }).fill(process.env.NAUKRI_USERNAME);
+
+  await page.getByLabel('Password').fill(process.env.NAUKRI_PASSWORD);
+
+  //await page.locator('#usernameField').fill(process.env.NAUKRI_USERNAME);
+
+ // await page.locator('#passwordField').fill(process.env.NAUKRI_PASSWORD);
 
     await page.locator('button').filter({ hasText: 'Login' }).first().click();
 
