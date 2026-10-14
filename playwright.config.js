@@ -13,7 +13,7 @@ export default defineConfig({
   outputDir: 'test-results',
 
   use: {
-    headless: false,
+    headless: true,
 
     launchOptions: {
       args: ['--disable-http2']
