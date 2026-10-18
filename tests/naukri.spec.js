@@ -29,19 +29,9 @@ test('Update Naukri Profile', async ({ page }) => {
     timeout: 60000
   });
 
- const loginButton = await page.locator('button.btn-primary.loginButton');
+  await page.locator('#login_Layer').click();
 
-await loginButton.waitFor({
-  state: 'visible',
-  timeout: 30000
-});
-
-await loginButton.scrollIntoViewIfNeeded();
-await loginButton.click({
-  timeout: 15000
-});
-
-
+  
 
 
   await page.getByRole('textbox', { name: 'Email ID / Username' }).fill(process.env.NAUKRI_USERNAME);
@@ -52,7 +42,17 @@ await loginButton.click({
 
  // await page.locator('#passwordField').fill(process.env.NAUKRI_PASSWORD);
 
- await page.locator('button.btn-primary.loginButton').click();
+ const loginButton = await page.locator('button.btn-primary.loginButton').click();
+
+ await loginButton.waitFor({
+  state: 'visible',
+  timeout: 30000
+});
+
+await loginButton.scrollIntoViewIfNeeded();
+await loginButton.click({
+  timeout: 15000
+});
   
  //await page.locator('button').filter({ hasText: 'Login' }).first().click();
 
