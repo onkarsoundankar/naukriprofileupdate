@@ -10,3 +10,4 @@ node_modules/
 credentials.json
 token.json
 gmail-token.json
+playwright/.auth/

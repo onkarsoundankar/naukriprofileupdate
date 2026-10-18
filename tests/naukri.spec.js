@@ -1,7 +1,7 @@
 
 import 'dotenv/config';
 import { test } from '@playwright/test';
-import { getNaukriOtp } from '../gmail-otp.mjs';
+
 
 test('Update Naukri Profile', async ({ page }) => {
   test.setTimeout(90000);
@@ -29,7 +29,18 @@ test('Update Naukri Profile', async ({ page }) => {
     timeout: 60000
   });
 
-  await page.locator('#login_Layer').click();
+ const loginButton = page.locator('#login_Layer');
+
+await loginButton.waitFor({
+  state: 'visible',
+  timeout: 30000
+});
+
+await loginButton.scrollIntoViewIfNeeded();
+await loginButton.click({
+  timeout: 15000
+});
+
 
 
 

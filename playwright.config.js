@@ -1,5 +1,8 @@
 
 import { defineConfig } from '@playwright/test';
+import fs from 'node:fs';
+
+const authFile = 'playwright/.auth/state.json';
 
 export default defineConfig({
   testDir: './tests',
@@ -9,18 +12,19 @@ export default defineConfig({
   workers: 1,
 
   reporter: 'list',
-
   outputDir: 'test-results',
 
   use: {
+    storageState: fs.existsSync(authFile) ? authFile : undefined,
+
     headless: false,
 
     launchOptions: {
-      args: ['--disable-http2']
+      args: ['--disable-http2'],
     },
 
     video: 'on',
     screenshot: 'on',
-    trace: 'retain-on-failure'
-  }
+    trace: 'retain-on-failure',
+  },
 });
