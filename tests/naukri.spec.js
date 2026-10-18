@@ -29,7 +29,7 @@ test('Update Naukri Profile', async ({ page }) => {
     timeout: 60000
   });
 
- const loginButton = page.locator('#login_Layer');
+ const loginButton = await page.locator('button.btn-primary.loginButton');
 
 await loginButton.waitFor({
   state: 'visible',
