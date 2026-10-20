@@ -42,17 +42,15 @@ test('Update Naukri Profile', async ({ page }) => {
 
  // await page.locator('#passwordField').fill(process.env.NAUKRI_PASSWORD);
 
- const loginButton = await page.locator('button.btn-primary.loginButton').click();
+const loginButton = page.locator('button.btn-primary.loginButton');
 
- await loginButton.waitFor({
+await loginButton.waitFor({
   state: 'visible',
-  timeout: 30000
+  timeout: 15000
 });
 
 await loginButton.scrollIntoViewIfNeeded();
-await loginButton.click({
-  timeout: 15000
-});
+await loginButton.click({ timeout: 15000 });
   
  //await page.locator('button').filter({ hasText: 'Login' }).first().click();
 
