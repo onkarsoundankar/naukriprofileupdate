@@ -1,8 +1,8 @@
-name: Naukri Profile Update
+name: Naukri Resume Headline Update
 
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 permissions:
