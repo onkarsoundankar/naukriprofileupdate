@@ -1,8 +1,6 @@
-
 import { defineConfig } from '@playwright/test';
-import fs from 'node:fs';
 
-const authFile = 'playwright/.auth/state.json';
+const isCI = !!process.env.CI;
 
 export default defineConfig({
   testDir: './tests',
@@ -15,9 +13,7 @@ export default defineConfig({
   outputDir: 'test-results',
 
   use: {
-    storageState: fs.existsSync(authFile) ? authFile : undefined,
-
-    headless: false,
+    headless: isCI,
 
     launchOptions: {
       args: ['--disable-http2'],
