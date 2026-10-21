@@ -3,7 +3,7 @@ import 'dotenv/config';
 import { test } from '@playwright/test';
 
 
-test('Update Naukri Profile', async ({ page }) => {
+test('Update Naukri Resume Headline', async ({ page }) => {
   test.setTimeout(90000);
 
   const headlines = [
